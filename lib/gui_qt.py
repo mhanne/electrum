@@ -207,7 +207,8 @@ class ElectrumWindow(QMainWindow):
         cfg = SimpleConfig()
         g = cfg.config["winpos-qt"]
         self.setGeometry(g[0], g[1], g[2], g[3])
-        title = 'Electrum ' + self.wallet.electrum_version + '  -  ' + self.wallet.path
+        path = self.wallet.path  if self.wallet.file_exists else "memory"
+        title = 'Electrum ' + self.wallet.electrum_version + '  - ' + path
         if not self.wallet.seed: title += ' [seedless]'
         self.setWindowTitle( title )
 

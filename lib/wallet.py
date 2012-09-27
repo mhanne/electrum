@@ -646,6 +646,8 @@ class Wallet:
 
 
     def save(self):
+        if not self.file_exists:
+            return
         # TODO: Need special config storage class. Should not be mixed
         # up with the wallet.
         # Settings should maybe be stored in a flat ini file.
