@@ -32,7 +32,10 @@ class Blockchain(threading.Thread):
         self.lock = threading.Lock()
         self.local_height = 0
         self.running = False
-        self.headers_url = 'http://headers.electrum.org/blockchain_headers'
+        if(config.get('testnet', False)):
+            self.headers_url = 'http://dumps.webbtc.com/testnet3/electrum_headers.dat'
+        else:
+            self.headers_url = 'http://headers.electrum.org/blockchain_headers'
         self.set_local_height()
         self.queue = Queue.Queue()
 

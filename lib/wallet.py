@@ -72,6 +72,7 @@ from version import *
 class WalletStorage:
 
     def __init__(self, config):
+        self.config = config
         self.lock = threading.Lock()
         self.data = {}
         self.file_exists = False
@@ -154,8 +155,8 @@ class WalletStorage:
 class Wallet:
 
     def __init__(self, storage):
-
         self.storage = storage
+        self.testnet = self.storage.config.get('testnet', False)
         self.electrum_version = ELECTRUM_VERSION
         self.gap_limit_for_change = 3 # constant
 
@@ -196,7 +197,7 @@ class Wallet:
         tx_list = self.storage.get('transactions',{})
         for k,v in tx_list.items():
             try:
-                tx = Transaction(v)
+                tx = Transaction(v, True, self.testnet)
             except Exception:
                 print_msg("Warning: Cannot deserialize transactions. skipping")
                 continue
@@ -260,7 +261,7 @@ class Wallet:
         # check password
         seed = self.get_seed(password)
         try:
-            address = address_from_private_key(sec)
+            address = address_from_private_key(sec, self.testnet)
         except Exception:
             raise Exception('Invalid private key')
 
@@ -473,7 +474,7 @@ class Wallet:
         if account_type is '1':
             master_c0, master_K0, _ = self.master_public_keys["m/0'/"]
             c0, K0, cK0 = bip32_public_derivation(master_c0.decode('hex'), master_K0.decode('hex'), "m/0'/", "m/0'/%d"%i)
-            account = BIP32_Account({ 'c':c0, 'K':K0, 'cK':cK0 })
+            account = BIP32_Account({ 'c':c0, 'K':K0, 'cK':cK0 }, self.testnet)
 
         elif account_type == '2of2':
             master_c1, master_K1, _ = self.master_public_keys["m/1'/"]
@@ -528,7 +529,7 @@ class Wallet:
 
     def create_old_account(self, mpk):
         self.storage.put('master_public_key', mpk, True)
-        self.accounts[0] = OldAccount({'mpk':mpk, 0:[], 1:[]})
+        self.accounts[0] = OldAccount({'mpk':mpk, 0:[], 1:[]}, self.testnet)
         self.save_accounts()
 
 
@@ -546,11 +547,11 @@ class Wallet:
         for k, v in d.items():
             if k == 0:
                 v['mpk'] = self.storage.get('master_public_key')
-                self.accounts[k] = OldAccount(v)
+                self.accounts[k] = OldAccount(v, self.testnet)
             elif '&' in k:
                 self.accounts[k] = BIP32_Account_2of2(v)
             else:
-                self.accounts[k] = BIP32_Account(v)
+                self.accounts[k] = BIP32_Account(v, self.testnet)
 
         self.pending_accounts = self.storage.get('pending_accounts',{})
 
@@ -1340,7 +1341,7 @@ class Wallet:
             raise ValueError("Not enough funds")
         self.add_input_info(inputs)
         outputs = self.add_tx_change(inputs, outputs, amount, fee, total, change_addr)
-        return Transaction.from_io(inputs, outputs)
+        return Transaction.from_io(inputs, outputs, self.testnet)
 
 
     def mktx(self, outputs, password, fee=None, change_addr=None, domain= None ):
@@ -1740,7 +1741,7 @@ class WalletSynchronizer(threading.Thread):
                 tx_hash = params[0]
                 tx_height = params[1]
                 assert tx_hash == hash_encode(Hash(result.decode('hex')))
-                tx = Transaction(result)
+                tx = Transaction(result, True, self.wallet.testnet)
                 self.wallet.receive_tx_callback(tx_hash, tx, tx_height)
                 self.was_updated = True
                 requested_tx.remove( (tx_hash, tx_height) )

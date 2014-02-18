@@ -21,9 +21,10 @@ from bitcoin import *
 from transaction import Transaction
 
 class Account(object):
-    def __init__(self, v):
+    def __init__(self, v, testnet = False):
         self.addresses = v.get('0', [])
         self.change = v.get('1', [])
+        self.testnet = testnet
 
     def dump(self):
         return {'0':self.addresses, '1':self.change}
@@ -50,10 +51,11 @@ class Account(object):
 class OldAccount(Account):
     """  Privatekey(type,n) = Master_private_key + H(n|S|type)  """
 
-    def __init__(self, v):
+    def __init__(self, v, testnet = False):
         self.addresses = v.get(0, [])
         self.change = v.get(1, [])
         self.mpk = v['mpk'].decode('hex')
+        self.testnet = testnet
 
     def dump(self):
         return {0:self.addresses, 1:self.change}
@@ -78,7 +80,7 @@ class OldAccount(Account):
 
     def get_address(self, for_change, n):
         pubkey = self.get_pubkey(for_change, n)
-        address = public_key_to_bc_address( pubkey.decode('hex') )
+        address = public_key_to_bc_address( pubkey.decode('hex'), self.testnet )
         return address
 
     def get_pubkey(self, for_change, n):
@@ -118,8 +120,8 @@ class OldAccount(Account):
 
 class BIP32_Account(Account):
 
-    def __init__(self, v):
-        Account.__init__(self, v)
+    def __init__(self, v, testnet = False):
+        Account.__init__(self, v, testnet)
         self.c = v['c'].decode('hex')
         self.K = v['K'].decode('hex')
         self.cK = v['cK'].decode('hex')
@@ -133,7 +135,7 @@ class BIP32_Account(Account):
 
     def get_address(self, for_change, n):
         pubkey = self.get_pubkey(for_change, n)
-        address = public_key_to_bc_address( pubkey.decode('hex') )
+        address = public_key_to_bc_address( pubkey.decode('hex'), self.testnet )
         return address
 
     def first_address(self):

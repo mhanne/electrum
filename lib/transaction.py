@@ -295,7 +295,7 @@ def match_decoded(decoded, to_match):
             return False
     return True
 
-def get_address_from_input_script(bytes):
+def get_address_from_input_script(bytes, testnet = False):
     try:
         decoded = [ x for x in script_GetOp(bytes) ]
     except Exception:
@@ -313,7 +313,7 @@ def get_address_from_input_script(bytes):
     # (65 bytes) onto the stack:
     match = [ opcodes.OP_PUSHDATA4, opcodes.OP_PUSHDATA4 ]
     if match_decoded(decoded, match):
-        return None, None, public_key_to_bc_address(decoded[1][1])
+        return None, None, public_key_to_bc_address(decoded[1][1], testnet)
 
     # p2sh transaction, 2 of n
     match = [ opcodes.OP_0 ]
@@ -345,7 +345,7 @@ def get_address_from_input_script(bytes):
 
 
 
-def get_address_from_output_script(bytes):
+def get_address_from_output_script(bytes, testnet = False):
     decoded = [ x for x in script_GetOp(bytes) ]
 
     # The Genesis Block, self-payments, and pay-by-IP-address payments look like:
@@ -358,7 +358,7 @@ def get_address_from_output_script(bytes):
     # DUP HASH160 20 BYTES:... EQUALVERIFY CHECKSIG
     match = [ opcodes.OP_DUP, opcodes.OP_HASH160, opcodes.OP_PUSHDATA4, opcodes.OP_EQUALVERIFY, opcodes.OP_CHECKSIG ]
     if match_decoded(decoded, match):
-        return False, hash_160_to_bc_address(decoded[2][1])
+        return False, hash_160_to_bc_address(decoded[2][1], testnet)
 
     # p2sh
     match = [ opcodes.OP_HASH160, opcodes.OP_PUSHDATA4, opcodes.OP_EQUAL ]
@@ -370,7 +370,8 @@ def get_address_from_output_script(bytes):
 
 class Transaction:
     
-    def __init__(self, raw, is_complete = True):
+    def __init__(self, raw, is_complete = True, testnet = False):
+        self.testnet = testnet
         self.raw = raw
         self.deserialize()
         self.inputs = self.d['inputs']
@@ -382,9 +383,9 @@ class Transaction:
         return self.raw
 
     @classmethod
-    def from_io(klass, inputs, outputs):
+    def from_io(klass, inputs, outputs, testnet = False):
         raw = klass.serialize(inputs, outputs, for_sig = -1) # for_sig=-1 means do not sign
-        self = klass(raw)
+        self = klass(raw, testnet)
         self.is_complete = False
         self.inputs = inputs
         self.outputs = outputs
@@ -565,7 +566,7 @@ class Transaction:
         d['sequence'] = vds.read_uint32()
 
         if scriptSig:
-            pubkeys, signatures, address = get_address_from_input_script(scriptSig)
+            pubkeys, signatures, address = get_address_from_input_script(scriptSig, self.testnet)
         else:
             pubkeys = []
             signatures = []
@@ -580,7 +581,7 @@ class Transaction:
         d = {}
         d['value'] = vds.read_int64()
         scriptPubKey = vds.read_bytes(vds.read_compact_size())
-        is_pubkey, address = get_address_from_output_script(scriptPubKey)
+        is_pubkey, address = get_address_from_output_script(scriptPubKey, self.testnet)
         d['is_pubkey'] = is_pubkey
         d['address'] = address
         d['scriptPubKey'] = scriptPubKey.encode('hex')
