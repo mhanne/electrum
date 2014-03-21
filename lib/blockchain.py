@@ -32,7 +32,7 @@ class Blockchain(threading.Thread):
         self.lock = threading.Lock()
         self.local_height = 0
         self.running = False
-        self.headers_url = 'http://headers.electrum.org/blockchain_headers'
+        self.headers_url = 'http://dumps.webbtc.com/testnet3/electrum_headers.dat'
         self.set_local_height()
         self.queue = Queue.Queue()
 
@@ -148,8 +148,8 @@ class Blockchain(threading.Thread):
             header = self.header_from_string(raw_header)
             _hash = self.hash_header(header)
             assert previous_hash == header.get('prev_block_hash')
-            assert bits == header.get('bits')
-            assert int('0x'+_hash,16) < target
+            # assert bits == header.get('bits')
+            # assert int('0x'+_hash,16) < target
 
             previous_header = header
             previous_hash = _hash 
